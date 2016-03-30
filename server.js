@@ -1,33 +1,31 @@
-'use strict';
+var http = require('http')
+var url = require('url')
 
-var express = require('express');
-var routes = require('./app/routes/index.js');
-var mongoose = require('mongoose');
-var passport = require('passport');
-var session = require('express-session');
 
-var app = express();
-require('dotenv').load();
-require('./app/config/passport')(passport);
-
-mongoose.connect(process.env.MONGO_URI);
-
-app.use('/controllers', express.static(process.cwd() + '/app/controllers'));
-app.use('/public', express.static(process.cwd() + '/public'));
-app.use('/common', express.static(process.cwd() + '/app/common'));
-
-app.use(session({
-	secret: 'secretClementine',
-	resave: false,
-	saveUninitialized: true
-}));
-
-app.use(passport.initialize());
-app.use(passport.session());
-
-routes(app, passport);
-
+var server = http.createServer(function(req, res) {
+	res.writeHead(200, { 'Content-Type': 'application/json' })
+	var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+	
+	var lang = req.headers["accept-language"]
+	var langIndex = lang.indexOf(',')
+	if (langIndex != -1) {
+		lang = lang.substr(0, langIndex)
+	} else {
+		langIndex = lang.indexOf(';')
+		if (langIndex != -1) {
+			lang = lang.substr(0, langIndex)
+		}
+	}
+	
+	var os = req.headers['user-agent']
+	var firstIndex = os.indexOf('(') + 1
+	var lastIndex = os.indexOf(')', firstIndex)
+	os = os.substr(firstIndex, lastIndex-firstIndex)
+	
+	var result = JSON.stringify({"ipaddress": ip,
+	                             "language": lang,
+	                             "software": os})
+	res.end(result)
+})
 var port = process.env.PORT || 8080;
-app.listen(port,  function () {
-	console.log('Node.js listening on port ' + port + '...');
-});
+server.listen(port)
